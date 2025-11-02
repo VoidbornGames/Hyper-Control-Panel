@@ -12,6 +12,8 @@ namespace HyperControlPanel.API.Models
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
         public bool IsActive { get; set; } = true;
         public DateTime? LastLoginAt { get; set; }
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiry { get; set; }
     }
 
     // Site entity
