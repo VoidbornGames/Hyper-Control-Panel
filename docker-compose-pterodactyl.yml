@@ -1,0 +1,169 @@
+version: '3.8'
+
+services:
+  # Control Panel Backend API (Port 5050 to avoid Pterodactyl's 8080)
+  control-panel:
+    build:
+      context: ./backend/HyperControlPanel.API
+      dockerfile: Dockerfile
+    container_name: hypercontrol-api
+    ports:
+      - "5050:5000"
+      - "5051:5001"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000;http://+:5001
+    env_file:
+      - .env
+    depends_on:
+      - postgresql
+      - mysql
+      - redis
+    volumes:
+      - ./backend/HyperControlPanel.API:/app
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${SITES_ROOT_DIR:-/var/www/hypercontrol-sites}:/var/www/sites
+      - ${BACKUP_DIR:-/var/backups/hypercontrolpanel}:/var/backups
+    networks:
+      - hypercontrol-network
+    restart: unless-stopped
+
+  # Frontend Application (Port 3100 to avoid conflicts)
+  frontend:
+    build:
+      context: ./frontend/hyper-control-panel
+      dockerfile: Dockerfile.dev
+    container_name: hypercontrol-frontend
+    ports:
+      - "3100:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:5050
+      - REACT_APP_ENVIRONMENT=development
+      - PORT=3000
+    volumes:
+      - ./frontend/hyper-control-panel:/app
+      - /app/node_modules
+    depends_on:
+      - control-panel
+    networks:
+      - hypercontrol-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy (Ports 8080/8443 to avoid Pterodactyl's 80/443)
+  nginx:
+    image: nginx:alpine
+    container_name: hypercontrol-nginx
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./nginx/nginx-pterodactyl.conf:/etc/nginx/nginx.conf
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ${SITES_ROOT_DIR:-/var/www/hypercontrol-sites}:/var/www/sites
+      - ./ssl:/etc/ssl
+      - ./logs/nginx:/var/log/nginx
+    depends_on:
+      - control-panel
+      - frontend
+    networks:
+      - hypercontrol-network
+    restart: unless-stopped
+
+  # PostgreSQL Database (Port 5433 to avoid conflicts)
+  postgresql:
+    image: postgres:15-alpine
+    container_name: hypercontrol-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-hypercontrolpanel}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./logs/postgres:/var/log/postgresql
+    networks:
+      - hypercontrol-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # MySQL for Site Databases (Port 3307 to avoid Pterodactyl's 3306)
+  mysql:
+    image: mysql:8.0
+    container_name: hypercontrol-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: site_databases
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./scripts/init-mysql.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./logs/mysql:/var/log/mysql
+    networks:
+      - hypercontrol-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis for Caching and Sessions (Port 6380 to avoid conflicts)
+  redis:
+    image: redis:7-alpine
+    container_name: hypercontrol-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+      - ./logs/redis:/var/log/redis
+    networks:
+      - hypercontrol-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Portainer for Docker Management (Port 9443 to avoid conflicts)
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: hypercontrol-portainer
+    ports:
+      - "9443:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - hypercontrol-network
+    restart: unless-stopped
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
+    driver: local
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  portainer_data:
+    driver: local
+
+networks:
+  hypercontrol-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+    driver_opts:
+      com.docker.network.bridge.name: hypercontrol-br0
