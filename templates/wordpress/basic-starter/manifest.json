@@ -1,0 +1,105 @@
+{
+  "name": "Basic WordPress Starter",
+  "description": "A clean and minimal WordPress starter site perfect for blogs and small business websites",
+  "version": "1.0.0",
+  "platform": "wordpress",
+  "category": "blog",
+  "tags": ["blog", "business", "minimal", "responsive"],
+  "author": "Hyper Control Panel",
+  "homepage": "https://hypercontrolpanel.com",
+  "requirements": {
+    "php": ">=7.4",
+    "wordpress": ">=6.0",
+    "mysql": ">=5.7"
+  },
+  "features": [
+    "Responsive design",
+    "SEO optimized",
+    "Fast loading",
+    "Customizable colors",
+    "Widget ready",
+    "Social media integration"
+  ],
+  "variables": {
+    "site_title": {
+      "type": "string",
+      "default": "My WordPress Site",
+      "description": "The title of your WordPress site"
+    },
+    "site_description": {
+      "type": "string",
+      "default": "A WordPress site built with Hyper Control Panel",
+      "description": "Site description for SEO"
+    },
+    "admin_email": {
+      "type": "email",
+      "required": true,
+      "description": "Administrator email address"
+    },
+    "theme_color": {
+      "type": "color",
+      "default": "#1976d2",
+      "description": "Primary theme color"
+    }
+  },
+  "plugins": [
+    {
+      "name": "Yoast SEO",
+      "slug": "wordpress-seo",
+      "version": "latest",
+      "required": false
+    },
+    {
+      "name": "Contact Form 7",
+      "slug": "contact-form-7",
+      "version": "latest",
+      "required": false
+    },
+    {
+      "name": "Wordfence Security",
+      "slug": "wordfence",
+      "version": "latest",
+      "required": false
+    }
+  ],
+  "pages": [
+    {
+      "title": "Home",
+      "slug": "home",
+      "template": "home",
+      "content": "Welcome to your new WordPress site! This is your homepage where you can showcase your most important content."
+    },
+    {
+      "title": "About",
+      "slug": "about",
+      "content": "Learn more about us, our mission, and what we do."
+    },
+    {
+      "title": "Contact",
+      "slug": "contact",
+      "content": "Get in touch with us through our contact form or contact information."
+    },
+    {
+      "title": "Blog",
+      "slug": "blog",
+      "content": "Read our latest articles and updates."
+    }
+  ],
+  "installation": {
+    "script": "install.sh",
+    "steps": [
+      "Download WordPress core files",
+      "Create wp-config.php with database credentials",
+      "Install WordPress database tables",
+      "Configure basic settings",
+      "Install and activate required plugins",
+      "Create default pages and menu",
+      "Set up permalinks structure",
+      "Configure basic SEO settings"
+    ]
+  },
+  "preview": {
+    "screenshot": "screenshot.png",
+    "demo_url": "https://demo.hypercontrolpanel.com/wordpress-basic"
+  }
+}
